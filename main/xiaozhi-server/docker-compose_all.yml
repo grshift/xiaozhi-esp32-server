@@ -6,26 +6,22 @@ services:
   xiaozhi-esp32-server:
     image: ghcr.nju.edu.cn/xinnan-tech/xiaozhi-esp32-server:server_latest
     container_name: xiaozhi-esp32-server
-    depends_on:
-      - xiaozhi-esp32-server-db
-      - xiaozhi-esp32-server-redis
     restart: always
     networks:
       - default
-    ports:
-      # ws服务端
-      - "8000:8000"
-      # http服务的端口，用于视觉分析接口
-      - "8003:8003"
+    expose:
+      - "8000"
+      - "8003"
     security_opt:
       - seccomp:unconfined
     environment:
       - TZ=Asia/Shanghai
+    external_links:
+      - xiaozhi-esp32-server-db:xiaozhi-esp32-server-db
+      - xiaozhi-esp32-server-redis:xiaozhi-esp32-server-redis
     volumes:
-      # 配置文件目录
       - ./data:/opt/xiaozhi-esp32-server/data
-      # 模型文件挂接，很重要
-      - ./models/SenseVoiceSmall/model.pt:/opt/xiaozhi-esp32-server/models/SenseVoiceSmall/model.pt
+      - ./models/SenseVoiceSmall:/opt/xiaozhi-esp32-server/models/SenseVoiceSmall
 
   # manager-api和manager-web模块
   xiaozhi-esp32-server-web:
@@ -34,14 +30,8 @@ services:
     restart: always
     networks:
       - default
-    depends_on:
-      xiaozhi-esp32-server-db:
-        condition: service_healthy
-      xiaozhi-esp32-server-redis:
-        condition: service_healthy
-    ports:
-      # 智控台
-      - "8002:8002"
+    expose:
+      - "8002"
     environment:
       - TZ=Asia/Shanghai
       - SPRING_DATASOURCE_DRUID_URL=jdbc:mysql://xiaozhi-esp32-server-db:3306/xiaozhi_esp32_server?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&nullCatalogMeansCurrent=true&connectTimeout=30000&socketTimeout=30000&autoReconnect=true&failOverReadOnly=false&maxReconnects=10
@@ -50,43 +40,45 @@ services:
       - SPRING_DATA_REDIS_HOST=xiaozhi-esp32-server-redis
       - SPRING_DATA_REDIS_PASSWORD=
       - SPRING_DATA_REDIS_PORT=6379
+    external_links:
+      - xiaozhi-esp32-server-db:xiaozhi-esp32-server-db
+      - xiaozhi-esp32-server-redis:xiaozhi-esp32-server-redis
     volumes:
-      # 配置文件目录
       - ./uploadfile:/uploadfile
-  # 数据库模块
-  xiaozhi-esp32-server-db:
-    image: mysql:latest
-    container_name: xiaozhi-esp32-server-db
-    healthcheck:
-      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
-      timeout: 45s
-      interval: 10s
-      retries: 10
+
+  # Nginx代理服务
+  xiaozhi-nginx:
+    image: nginx:alpine
+    container_name: xiaozhi-nginx
     restart: always
     networks:
       - default
-    expose:
-      - 3306
+    ports:
+      - "8080:80"
+    depends_on:
+      - xiaozhi-esp32-server
+      - xiaozhi-esp32-server-web
     volumes:
-      - ./mysql/data:/var/lib/mysql
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./logs/nginx:/var/log/nginx
     environment:
       - TZ=Asia/Shanghai
-      - MYSQL_ROOT_PASSWORD=123456
-      - MYSQL_DATABASE=xiaozhi_esp32_server
-      - MYSQL_INITDB_ARGS="--character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci"
-  # redis模块
-  xiaozhi-esp32-server-redis:
-    image: redis
-    expose:
-      - 6379
-    container_name: xiaozhi-esp32-server-redis
+
+  # FRP客户端服务
+  xiaozhi-frpc:
+    image: fatedier/frpc:v0.52.3
+    container_name: xiaozhi-frpc
     restart: always
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
     networks:
       - default
+    depends_on:
+      - xiaozhi-nginx
+    volumes:
+      - ./frpc.toml:/etc/frp/frpc.toml:ro
+      - ./logs/frpc:/var/log/frpc
+    environment:
+      - TZ=Asia/Shanghai
+    command: ["-c", "/etc/frp/frpc.toml"]
+
 networks:
   default:
