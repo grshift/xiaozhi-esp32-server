@@ -139,4 +139,41 @@ public class RedisKeys {
         return "sms:Validate:Code:" + phone + ":today_count";
     }
 
+    // ==================== 传感器相关缓存键 ====================
+
+    /**
+     * 传感器实时数据缓存key
+     */
+    public static String getSensorRealtimeKey(String deviceId, String sensorCode) {
+        return "sensor:realtime:" + deviceId + ":" + sensorCode;
+    }
+
+    /**
+     * 传感器聚合数据缓存key
+     */
+    public static String getSensorAggregateKey(String deviceId, String sensorId, String type, String dateKey) {
+        return "sensor:aggregate:" + deviceId + ":" + sensorId + ":" + type + ":" + dateKey;
+    }
+
+    /**
+     * 设备级告警规则缓存key
+     */
+    public static String getSensorAlertRulesKey(String deviceId) {
+        return "sensor:alert:rules:" + deviceId;
+    }
+
+    /**
+     * 传感器类型缓存key
+     */
+    public static String getSensorTypeKey(String typeCode) {
+        return "sensor:type:" + typeCode;
+    }
+
+    /**
+     * 设备传感器配置缓存key
+     */
+    public static String getDeviceSensorConfigKey(String deviceId) {
+        return "sensor:device:config:" + deviceId;
+    }
+
 }
