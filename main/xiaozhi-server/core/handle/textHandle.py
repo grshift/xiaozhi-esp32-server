@@ -1,6 +1,7 @@
 import json
 from core.handle.abortHandle import handleAbortMessage
 from core.handle.helloHandle import handleHelloMessage
+from core.handle.sensorHandle import handleSensorData  # 新增导入
 from core.providers.tools.device_mcp import handle_mcp_message
 from core.utils.util import remove_punctuation_and_length, filter_sensitive_info
 from core.handle.receiveAudioHandle import startToChat, handleAudioMessage
@@ -26,8 +27,12 @@ async def handleTextMessage(conn, message):
         elif msg_json["type"] == "abort":
             conn.logger.bind(tag=TAG).info(f"收到abort消息：{message}")
             await handleAbortMessage(conn)
+        elif msg_json["type"] == "sensor_data":  # 新增传感器数据处理
+            conn.logger.bind(tag=TAG).info(f"收到传感器数据消息：{message[:200]}...")  # 限制日志长度
+            await handleSensorData(conn, msg_json)
         elif msg_json["type"] == "listen":
             conn.logger.bind(tag=TAG).info(f"收到listen消息：{message}")
+            # ... existing code ...
             if "mode" in msg_json:
                 conn.client_listen_mode = msg_json["mode"]
                 conn.logger.bind(tag=TAG).debug(
@@ -83,6 +88,7 @@ async def handleTextMessage(conn, message):
                     handle_mcp_message(conn, conn.mcp_client, msg_json["payload"])
                 )
         elif msg_json["type"] == "server":
+            # ... existing code ...
             # 记录日志时过滤敏感信息
             conn.logger.bind(tag=TAG).info(
                 f"收到服务器消息：{filter_sensitive_info(msg_json)}"

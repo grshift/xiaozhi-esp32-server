@@ -175,3 +175,8 @@ uploadfile
 *.json
 .vscode
 .cursor
+# nginx
+main/xiaozhi-server/frpc.toml
+main/xiaozhi-server/nginx.conf
+# notes
+notes/
