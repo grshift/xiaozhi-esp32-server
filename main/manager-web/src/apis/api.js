@@ -7,6 +7,7 @@ import model from './module/model.js'
 import ota from './module/ota.js'
 import timbre from "./module/timbre.js"
 import user from './module/user.js'
+import sensor from './module/sensor.js'
 
 /**
  * 接口地址
@@ -33,5 +34,6 @@ export default {
     model,
     timbre,
     ota,
-    dict
+    dict,
+    sensor
 }

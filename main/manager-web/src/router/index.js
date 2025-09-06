@@ -124,6 +124,40 @@ const routes = [
       return import('../views/ProviderManagement.vue')
     }
   },
+  // 传感器相关路由
+  {
+    path: '/sensor-management',
+    name: 'SensorManagement',
+    component: function () {
+      return import('../views/SensorManagement.vue')
+    },
+    meta: {
+      requiresAuth: true,
+      title: '传感器管理'
+    }
+  },
+  {
+    path: '/sensor-monitor',
+    name: 'SensorMonitor',
+    component: function () {
+      return import('../views/SensorMonitor.vue')
+    },
+    meta: {
+      requiresAuth: true,
+      title: '传感器监控'
+    }
+  },
+  {
+    path: '/sensor-alerts',
+    name: 'SensorAlerts',
+    component: function () {
+      return import('../views/SensorAlerts.vue')
+    },
+    meta: {
+      requiresAuth: true,
+      title: '传感器告警'
+    }
+  },
 ]
 const router = new VueRouter({
   base: process.env.VUE_APP_PUBLIC_PATH || '/',
@@ -145,7 +179,7 @@ VueRouter.prototype.push = function push(location) {
 }
 
 // 需要登录才能访问的路由
-const protectedRoutes = ['home', 'RoleConfig', 'DeviceManagement', 'UserManagement', 'ModelConfig']
+const protectedRoutes = ['home', 'RoleConfig', 'DeviceManagement', 'UserManagement', 'ModelConfig', 'SensorManagement', 'SensorMonitor', 'SensorAlerts']
 
 // 路由守卫
 router.beforeEach((to, from, next) => {

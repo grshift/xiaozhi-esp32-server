@@ -57,6 +57,7 @@ class ManageApiClient:
                 "Authorization": "Bearer " + cls._secret,
             },
             timeout=cls.config.get("timeout", 30),  # 默认超时时间30秒
+            trust_env=False,  # 禁用环境变量代理
         )
 
     @classmethod
@@ -187,6 +188,47 @@ def report(
 
 def init_service(config):
     ManageApiClient(config)
+
+
+def report_sensor_data(mac_address: str, sensor_data: Dict) -> Optional[Dict]:
+    """上报传感器数据到Java后端API"""
+    try:
+        return ManageApiClient._instance._execute_request(
+            "POST",
+            "/xiaozhi/sensor/data/report",
+            json={
+                "macAddress": mac_address,
+                "timestamp": sensor_data.get("timestamp"),
+                "sensors": sensor_data.get("sensors", [])
+            }
+        )
+    except Exception as e:
+        print(f"上报传感器数据失败: {e}")
+        return None
+
+
+def get_device_sensors(device_id: str) -> Optional[Dict]:
+    """获取设备的传感器配置"""
+    try:
+        return ManageApiClient._instance._execute_request(
+            "GET",
+            f"/xiaozhi/sensor/device/device/{device_id}"
+        )
+    except Exception as e:
+        print(f"获取设备传感器配置失败: {e}")
+        return None
+
+
+def get_sensor_realtime_data(device_id: str) -> Optional[Dict]:
+    """获取设备的实时传感器数据"""
+    try:
+        return ManageApiClient._instance._execute_request(
+            "GET",
+            f"/xiaozhi/sensor/data/realtime?deviceId={device_id}"
+        )
+    except Exception as e:
+        print(f"获取实时传感器数据失败: {e}")
+        return None
 
 
 def manage_api_http_safe_close():

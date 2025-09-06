@@ -117,7 +117,7 @@
 
         <!-- 使用字典数据编辑弹框组件 -->
         <DictDataDialog :visible.sync="dictDataDialogVisible" :title="dictDataDialogTitle" :dictData="dictDataForm"
-            :dictTypeId="selectedDictType?.id" @save="saveDictData" />
+            :dictTypeId="selectedDictType && selectedDictType.id" @save="saveDictData" />
         <el-footer style="flex-shrink:unset;">
             <version-footer />
         </el-footer>
@@ -361,27 +361,27 @@ export default {
         handlePageSizeChange(val) {
             this.pageSize = val;
             this.currentPage = 1;
-            this.loadDictDataList(this.selectedDictType?.id);
+            this.loadDictDataList(this.selectedDictType && this.selectedDictType.id);
         },
         goFirst() {
             this.currentPage = 1;
-            this.loadDictDataList(this.selectedDictType?.id);
+            this.loadDictDataList(this.selectedDictType && this.selectedDictType.id);
         },
         goPrev() {
             if (this.currentPage > 1) {
                 this.currentPage--;
-                this.loadDictDataList(this.selectedDictType?.id);
+                this.loadDictDataList(this.selectedDictType && this.selectedDictType.id);
             }
         },
         goNext() {
             if (this.currentPage < this.pageCount) {
                 this.currentPage++;
-                this.loadDictDataList(this.selectedDictType?.id);
+                this.loadDictDataList(this.selectedDictType && this.selectedDictType.id);
             }
         },
         goToPage(page) {
             this.currentPage = page;
-            this.loadDictDataList(this.selectedDictType?.id);
+            this.loadDictDataList(this.selectedDictType && this.selectedDictType.id);
         }
     },
     computed: {

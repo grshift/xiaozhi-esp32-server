@@ -1,6 +1,9 @@
 import json
 import time
 from typing import Dict, Any, Optional, Tuple
+from datetime import datetime
+
+from config.manage_api_client import ManageApiClient, report_sensor_data
 
 TAG = __name__
 
@@ -163,16 +166,16 @@ async def handleSensorData(conn, sensor_data: Dict[str, Any]):
         sensor_data: 传感器数据
     """
     try:
-        # 验证传感器数据
-        is_valid, error_msg, processed_data = validate_sensor_data(sensor_data)
+        # 使用新的消息处理函数
+        is_success, message, processed_data = handle_sensor_data_message(sensor_data)
         
-        if not is_valid:
-            conn.logger.bind(tag=TAG).error(f"传感器数据验证失败: {error_msg}")
+        if not is_success:
+            conn.logger.bind(tag=TAG).error(f"传感器数据处理失败: {message}")
             # 发送错误响应
             error_response = {
                 "type": "sensor_data_response",
                 "status": "error",
-                "message": error_msg,
+                "message": message,
                 "timestamp": time.time()
             }
             await conn.websocket.send(json.dumps(error_response))
@@ -183,7 +186,7 @@ async def handleSensorData(conn, sensor_data: Dict[str, Any]):
         
         conn.logger.bind(tag=TAG).info(
             f"接收到设备 {device_id} 的传感器数据: "
-            f"{len(processed_data['sensor_values'])} 个传感器"
+            f"{len(processed_data['sensor_values'])} 个传感器，已发送到后端API"
         )
         
         # 详细记录每个传感器的数值
@@ -206,7 +209,7 @@ async def handleSensorData(conn, sensor_data: Dict[str, Any]):
         success_response = {
             "type": "sensor_data_response",
             "status": "success",
-            "message": "传感器数据接收成功",
+            "message": "传感器数据接收并处理成功",
             "device_id": device_id,
             "received_sensors": list(processed_data["sensor_values"].keys()),
             "timestamp": processed_data["timestamp"]
@@ -255,3 +258,147 @@ def get_sensor_data_summary(conn) -> Optional[Dict[str, Any]]:
         }
     
     return summary
+
+
+def send_sensor_data_to_api(mac_address: str, sensor_data: Dict[str, Any]) -> Optional[Dict]:
+    """
+    将传感器数据发送到Java后端API
+    
+    Args:
+        mac_address: 设备MAC地址
+        sensor_data: 处理后的传感器数据
+        
+    Returns:
+        Dict: API响应结果
+    """
+    try:
+        # 构建API请求数据
+        api_data = {
+            "timestamp": datetime.fromtimestamp(sensor_data["timestamp"]).strftime("%Y-%m-%d %H:%M:%S"),
+            "sensors": []
+        }
+        
+        # 转换传感器数据格式
+        for sensor_type, sensor_info in sensor_data["sensor_values"].items():
+            sensor_entry = {
+                "sensorCode": sensor_type,
+                "value": sensor_info["value"]
+            }
+            api_data["sensors"].append(sensor_entry)
+        
+        # 使用新的API函数
+        response = report_sensor_data(mac_address, api_data)
+        
+        return response
+        
+    except Exception as e:
+        print(f"发送传感器数据到API失败: {e}")
+        return None
+
+
+def handle_sensor_data_message(message_data: Dict[str, Any]) -> Tuple[bool, str, Dict[str, Any]]:
+    """
+    处理WebSocket传感器数据消息
+    
+    Args:
+        message_data: WebSocket消息数据
+        
+    Returns:
+        Tuple[bool, str, Dict]: (是否成功, 消息, 处理后的数据)
+    """
+    try:
+        # 提取MAC地址
+        mac_address = message_data.get("mac_address", "")
+        if not mac_address:
+            return False, "缺少设备MAC地址", {}
+        
+        # 提取传感器数据
+        sensors = message_data.get("sensors", [])
+        if not sensors:
+            return False, "缺少传感器数据", {}
+        
+        # 转换为内部格式
+        sensor_values = {}
+        for sensor in sensors:
+            sensor_code = sensor.get("sensor_code", "")
+            sensor_value = sensor.get("value")
+            
+            if sensor_code and sensor_value is not None:
+                # 映射传感器代码到内部类型
+                sensor_type = map_sensor_code_to_type(sensor_code)
+                if sensor_type:
+                    sensor_values[sensor_type] = sensor_value
+        
+        # 构建传感器数据结构
+        sensor_data = {
+            "device_info": {
+                "device_id": mac_address
+            },
+            "sensor_values": sensor_values,
+            "timestamp": message_data.get("timestamp", time.time())
+        }
+        
+        # 验证数据
+        is_valid, error_msg, processed_data = validate_sensor_data(sensor_data)
+        if not is_valid:
+            return False, error_msg, {}
+        
+        # 发送到Java后端API
+        api_response = send_sensor_data_to_api(mac_address, processed_data)
+        if api_response is None:
+            return False, "发送数据到后端API失败", processed_data
+        
+        return True, "传感器数据处理成功", processed_data
+        
+    except Exception as e:
+        return False, f"处理传感器数据异常: {str(e)}", {}
+
+
+def map_sensor_code_to_type(sensor_code: str) -> Optional[str]:
+    """
+    映射传感器代码到内部类型
+    
+    Args:
+        sensor_code: 传感器代码（如：temp_01, humi_01）
+        
+    Returns:
+        str: 内部传感器类型，如果无法映射则返回None
+    """
+    # 传感器代码映射规则
+    code_mapping = {
+        "temp": "temperature",
+        "humi": "humidity",
+        "bat": "battery_level",
+        "signal": "signal_strength",
+        "light": "light",
+        "motion": "motion",
+        "air_quality": "air_quality"
+    }
+    
+    # 提取传感器类型前缀
+    for prefix, sensor_type in code_mapping.items():
+        if sensor_code.startswith(prefix):
+            return sensor_type
+    
+    # 如果没有匹配，返回原始代码（可能是自定义传感器）
+    return sensor_code
+
+
+# 扩展传感器验证规则
+SENSOR_VALIDATION_RULES.update({
+    "light": {
+        "type": (int, float),
+        "range": (0, 100000),  # 光照强度：0 到 100000 lux
+        "unit": "lux"
+    },
+    "motion": {
+        "type": (int, bool),
+        "range": (0, 1),       # 运动检测：0或1
+        "unit": ""
+    },
+    "air_quality": {
+        "type": (int, float),
+        "range": (0, 500),     # 空气质量指数：0 到 500
+        "unit": "AQI"
+    }
+})

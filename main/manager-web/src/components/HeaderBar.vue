@@ -35,6 +35,27 @@
           OTA管理
         </div>
         <el-dropdown v-if="isSuperAdmin" trigger="click" class="equipment-management more-dropdown"
+          :class="{ 'active-tab': $route.path === '/sensor-management' || $route.path === '/sensor-monitor' || $route.path === '/sensor-alerts' }"
+          @visible-change="handleSensorDropdownVisibleChange">
+          <span class="el-dropdown-link">
+            <i class="el-icon-monitor" 
+              :style="{ color: $route.path === '/sensor-management' || $route.path === '/sensor-monitor' || $route.path === '/sensor-alerts' ? 'white' : '#666' }"></i>
+            传感器管理
+            <i class="el-icon-arrow-down el-icon--right" :class="{ 'rotate-down': sensorDropdownVisible }"></i>
+          </span>
+          <el-dropdown-menu slot="dropdown">
+            <el-dropdown-item @click.native="goSensorManagement">
+              传感器配置
+            </el-dropdown-item>
+            <el-dropdown-item @click.native="goSensorMonitor">
+              实时监控
+            </el-dropdown-item>
+            <el-dropdown-item @click.native="goSensorAlerts">
+              告警管理
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </el-dropdown>
+        <el-dropdown v-if="isSuperAdmin" trigger="click" class="equipment-management more-dropdown"
           :class="{ 'active-tab': $route.path === '/dict-management' || $route.path === '/params-management' || $route.path === '/provider-management' || $route.path === '/server-side-management' }"
           @visible-change="handleParamDropdownVisibleChange">
           <span class="el-dropdown-link">
@@ -108,6 +129,7 @@ export default {
       isChangePasswordDialogVisible: false, // 控制修改密码弹窗的显示
       userDropdownVisible: false,
       paramDropdownVisible: false,
+      sensorDropdownVisible: false,
       isSmallScreen: false
     }
   },
@@ -151,6 +173,15 @@ export default {
     },
     goServerSideManagement() {
       this.$router.push('/server-side-management')
+    },
+    goSensorManagement() {
+      this.$router.push('/sensor-management')
+    },
+    goSensorMonitor() {
+      this.$router.push('/sensor-monitor')
+    },
+    goSensorAlerts() {
+      this.$router.push('/sensor-alerts')
     },
     // 获取用户信息
     fetchUserInfo() {
@@ -214,6 +245,10 @@ export default {
     // 监听第二个下拉菜单的可见状态变化
     handleParamDropdownVisibleChange(visible) {
       this.paramDropdownVisible = visible;
+    },
+    // 监听传感器下拉菜单的可见状态变化
+    handleSensorDropdownVisibleChange(visible) {
+      this.sensorDropdownVisible = visible;
     },
 
     // 使用 mapActions 引入 Vuex 的 logout action
