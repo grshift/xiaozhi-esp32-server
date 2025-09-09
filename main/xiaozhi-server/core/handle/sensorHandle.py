@@ -368,11 +368,10 @@ def map_sensor_code_to_type(sensor_code: str) -> Optional[str]:
     code_mapping = {
         "temp": "temperature",
         "humi": "humidity",
-        "bat": "battery_level",
-        "signal": "signal_strength",
         "light": "light",
         "motion": "motion",
-        "air_quality": "air_quality"
+        "air_quality": "air_quality",
+        "co2": "co2"
     }
     
     # 提取传感器类型前缀
@@ -384,11 +383,11 @@ def map_sensor_code_to_type(sensor_code: str) -> Optional[str]:
     return sensor_code
 
 
-# 扩展传感器验证规则
+# 扩展传感器验证规则 - 严格按照文档定义
 SENSOR_VALIDATION_RULES.update({
     "light": {
         "type": (int, float),
-        "range": (0, 100000),  # 光照强度：0 到 100000 lux
+        "range": (0, 2000),  # 光照强度：0 到 2000 lux
         "unit": "lux"
     },
     "motion": {
@@ -398,7 +397,12 @@ SENSOR_VALIDATION_RULES.update({
     },
     "air_quality": {
         "type": (int, float),
-        "range": (0, 500),     # 空气质量指数：0 到 500
-        "unit": "AQI"
+        "range": (0, 500),     # 空气质量指数：0 到 500 ppm
+        "unit": "ppm"
+    },
+    "co2": {
+        "type": (int, float),
+        "range": (300, 2000),  # CO2浓度：300 到 2000 ppm
+        "unit": "ppm"
     }
 })
