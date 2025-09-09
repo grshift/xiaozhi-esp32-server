@@ -53,6 +53,8 @@ mybatis-plus:
     db-config:
       #主键类型
       id-type: ASSIGN_ID
+      # 字段名自动加反引号，解决保留关键字问题
+      column-format: '`%s`'
     banner: false
   #原生配置
   configuration:

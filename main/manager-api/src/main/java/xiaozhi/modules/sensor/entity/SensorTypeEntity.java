@@ -47,6 +47,7 @@ public class SensorTypeEntity {
     private String valueRange;
 
     @Schema(description = "数据精度(小数位数)")
+    @TableField("`precision`")
     private Integer precision;
 
     @Schema(description = "排序")

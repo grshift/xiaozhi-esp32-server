@@ -274,8 +274,12 @@ export default {
     
     // ========== 数据加载 ==========
     loadDevices() {
-      // 这里需要调用设备列表接口，暂时用空数组
-      this.deviceList = [];
+      // 调用设备列表接口
+      api.device.getDeviceList((res) => {
+        if (res.data) {
+          this.deviceList = res.data.data || res.data;
+        }
+      });
     },
     
     loadSensorList() {

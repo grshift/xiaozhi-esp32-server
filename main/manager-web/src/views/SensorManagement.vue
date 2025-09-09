@@ -101,6 +101,13 @@
         <el-form-item label="单位" prop="unit">
           <el-input v-model="sensorTypeForm.unit" placeholder="请输入单位"></el-input>
         </el-form-item>
+        <el-form-item label="数据类型" prop="dataType">
+          <el-select v-model="sensorTypeForm.dataType" placeholder="选择数据类型" style="width: 100%">
+            <el-option label="数值型" value="number"></el-option>
+            <el-option label="布尔型" value="boolean"></el-option>
+            <el-option label="字符串" value="string"></el-option>
+          </el-select>
+        </el-form-item>
         <el-row>
           <el-col :span="12">
             <el-form-item label="最小值" prop="minValue">
@@ -199,6 +206,7 @@ export default {
         typeCode: '',
         typeName: '',
         unit: '',
+        dataType: 'number',
         minValue: 0,
         maxValue: 100,
         precision: 1,
@@ -213,6 +221,9 @@ export default {
         ],
         unit: [
           { required: true, message: '请输入单位', trigger: 'blur' }
+        ],
+        dataType: [
+          { required: true, message: '请选择数据类型', trigger: 'change' }
         ]
       },
       
@@ -277,6 +288,7 @@ export default {
         typeCode: '',
         typeName: '',
         unit: '',
+        dataType: 'number',
         minValue: 0,
         maxValue: 100,
         precision: 1,
@@ -289,6 +301,22 @@ export default {
     editSensorType(row) {
       this.sensorTypeDialogTitle = '编辑传感器类型';
       this.sensorTypeForm = { ...row };
+      
+      // 解析valueRange JSON为minValue和maxValue
+      if (row.valueRange) {
+        try {
+          const range = JSON.parse(row.valueRange);
+          this.sensorTypeForm.minValue = range.min || 0;
+          this.sensorTypeForm.maxValue = range.max || 100;
+        } catch (e) {
+          this.sensorTypeForm.minValue = 0;
+          this.sensorTypeForm.maxValue = 100;
+        }
+      } else {
+        this.sensorTypeForm.minValue = 0;
+        this.sensorTypeForm.maxValue = 100;
+      }
+      
       this.editingType = row;
       this.sensorTypeDialogVisible = true;
     },
@@ -296,9 +324,21 @@ export default {
     saveSensorType() {
       this.$refs.sensorTypeForm.validate((valid) => {
         if (valid) {
+          // 构建提交数据，将minValue和maxValue转换为valueRange JSON
+          const submitData = {
+            ...this.sensorTypeForm,
+            valueRange: JSON.stringify({
+              min: this.sensorTypeForm.minValue || 0,
+              max: this.sensorTypeForm.maxValue || 100
+            })
+          };
+          // 移除不需要的字段
+          delete submitData.minValue;
+          delete submitData.maxValue;
+          
           if (this.editingType) {
             // 更新
-            api.sensor.updateSensorType(this.editingType.id, this.sensorTypeForm, (res) => {
+            api.sensor.updateSensorType(this.editingType.id, submitData, (res) => {
               if (res.data.code === 'success' || res.data.code === 0) {
                 this.$message.success('更新成功');
                 this.sensorTypeDialogVisible = false;
@@ -309,7 +349,7 @@ export default {
             });
           } else {
             // 新增
-            api.sensor.createSensorType(this.sensorTypeForm, (res) => {
+            api.sensor.createSensorType(submitData, (res) => {
               if (res.data.code === 'success' || res.data.code === 0) {
                 this.$message.success('创建成功');
                 this.sensorTypeDialogVisible = false;
@@ -342,8 +382,12 @@ export default {
     
     // ========== 设备传感器配置管理 ==========
     loadDevices() {
-      // 这里需要调用设备列表接口，暂时用空数组
-      this.deviceList = [];
+      // 调用设备列表接口
+      api.device.getDeviceList((res) => {
+        if (res.data) {
+          this.deviceList = res.data.data || res.data;
+        }
+      });
     },
     
     loadDeviceSensors() {

@@ -201,6 +201,13 @@ public class DeviceServiceImpl extends BaseServiceImpl<DeviceDao, DeviceEntity> 
     }
 
     @Override
+    public List<DeviceEntity> getUserAllDevices(Long userId) {
+        QueryWrapper<DeviceEntity> wrapper = new QueryWrapper<>();
+        wrapper.eq("user_id", userId);
+        return baseDao.selectList(wrapper);
+    }
+
+    @Override
     public void unbindDevice(Long userId, String deviceId) {
         UpdateWrapper<DeviceEntity> wrapper = new UpdateWrapper<>();
         wrapper.eq("user_id", userId);

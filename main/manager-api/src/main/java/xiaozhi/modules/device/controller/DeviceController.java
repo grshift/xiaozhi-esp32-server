@@ -66,6 +66,15 @@ public class DeviceController {
         return new Result<String>().ok(code);
     }
 
+    @GetMapping("/list")
+    @Operation(summary = "获取所有设备列表")
+    @RequiresPermissions("sys:role:normal")
+    public Result<List<DeviceEntity>> getDeviceList() {
+        UserDetail user = SecurityUser.getUser();
+        List<DeviceEntity> devices = deviceService.getUserAllDevices(user.getId());
+        return new Result<List<DeviceEntity>>().ok(devices);
+    }
+
     @GetMapping("/bind/{agentId}")
     @Operation(summary = "获取已绑定设备")
     @RequiresPermissions("sys:role:normal")

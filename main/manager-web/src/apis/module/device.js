@@ -2,6 +2,23 @@ import { getServiceUrl } from '../api';
 import RequestService from '../httpRequest';
 
 export default {
+    // 获取所有设备列表
+    getDeviceList(callback) {
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/device/list`)
+            .method('GET')
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('获取设备列表失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.getDeviceList(callback);
+                });
+            }).send();
+    },
+    
     // 已绑设备
     getAgentBindDevices(agentId, callback) {
         RequestService.sendRequest()
