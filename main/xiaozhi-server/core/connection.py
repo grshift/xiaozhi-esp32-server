@@ -272,6 +272,19 @@ class ConnectionHandler:
     async def _route_message(self, message):
         """消息路由"""
         if isinstance(message, str):
+            try:
+                # 尝试解析JSON消息
+                msg_json = json.loads(message)
+                if msg_json.get("type") in ["pump_control", "pump_status_request"]:
+                    # 水泵控制消息，导入并调用水泵处理器
+                    from core.handle.pumpHandle import handlePumpControl
+                    await handlePumpControl(self, msg_json)
+                    return
+            except json.JSONDecodeError:
+                # 如果不是JSON，当作普通文本处理
+                pass
+
+            # 普通文本消息或JSON消息的处理
             self.last_activity_time = time.time() * 1000
             await handleTextMessage(self, message)
         elif isinstance(message, bytes):

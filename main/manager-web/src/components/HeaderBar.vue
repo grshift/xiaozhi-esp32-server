@@ -56,6 +56,30 @@
           </el-dropdown-menu>
         </el-dropdown>
         <el-dropdown v-if="isSuperAdmin" trigger="click" class="equipment-management more-dropdown"
+          :class="{ 'active-tab': $route.path === '/actuator-management' || $route.path === '/actuator-monitor' || $route.path === '/actuator-history' || $route.path === '/pump-control' }"
+          @visible-change="handleActuatorDropdownVisibleChange">
+          <span class="el-dropdown-link">
+            <i class="el-icon-cpu"
+              :style="{ color: $route.path === '/actuator-management' || $route.path === '/actuator-monitor' || $route.path === '/actuator-history' || $route.path === '/pump-control' ? 'white' : '#666' }"></i>
+            水泵管理
+            <i class="el-icon-arrow-down el-icon--right" :class="{ 'rotate-down': actuatorDropdownVisible }"></i>
+          </span>
+          <el-dropdown-menu slot="dropdown">
+            <el-dropdown-item @click.native="goActuatorManagement">
+              水泵配置
+            </el-dropdown-item>
+            <el-dropdown-item @click.native="goActuatorMonitor">
+              实时监控
+            </el-dropdown-item>
+            <el-dropdown-item @click.native="goActuatorHistory">
+              操作历史
+            </el-dropdown-item>
+            <el-dropdown-item @click.native="goPumpControl">
+              水泵控制
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </el-dropdown>
+        <el-dropdown v-if="isSuperAdmin" trigger="click" class="equipment-management more-dropdown"
           :class="{ 'active-tab': $route.path === '/dict-management' || $route.path === '/params-management' || $route.path === '/provider-management' || $route.path === '/server-side-management' }"
           @visible-change="handleParamDropdownVisibleChange">
           <span class="el-dropdown-link">
@@ -130,6 +154,7 @@ export default {
       userDropdownVisible: false,
       paramDropdownVisible: false,
       sensorDropdownVisible: false,
+      actuatorDropdownVisible: false,
       isSmallScreen: false
     }
   },
@@ -182,6 +207,18 @@ export default {
     },
     goSensorAlerts() {
       this.$router.push('/sensor-alerts')
+    },
+    goActuatorManagement() {
+      this.$router.push('/actuator-management')
+    },
+    goActuatorMonitor() {
+      this.$router.push('/actuator-monitor')
+    },
+    goActuatorHistory() {
+      this.$router.push('/actuator-history')
+    },
+    goPumpControl() {
+      this.$router.push('/pump-control')
     },
     // 获取用户信息
     fetchUserInfo() {
@@ -249,6 +286,10 @@ export default {
     // 监听传感器下拉菜单的可见状态变化
     handleSensorDropdownVisibleChange(visible) {
       this.sensorDropdownVisible = visible;
+    },
+    // 监听执行器下拉菜单的可见状态变化
+    handleActuatorDropdownVisibleChange(visible) {
+      this.actuatorDropdownVisible = visible;
     },
 
     // 使用 mapActions 引入 Vuex 的 logout action

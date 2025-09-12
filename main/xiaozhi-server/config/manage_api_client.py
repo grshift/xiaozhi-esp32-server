@@ -231,5 +231,47 @@ def get_sensor_realtime_data(device_id: str) -> Optional[Dict]:
         return None
 
 
+def send_pump_command(device_id: str, action: str, parameters: Dict) -> Optional[Dict]:
+    """发送水泵控制命令到Java后端API"""
+    try:
+        return ManageApiClient._instance._execute_request(
+            "POST",
+            "/xiaozhi/pump/control",
+            json={
+                "deviceId": device_id,
+                "actuatorCode": "pump_01",  # 默认水泵编码，根据实际情况修改
+                "action": action,
+                "parameters": parameters
+            }
+        )
+    except Exception as e:
+        print(f"发送水泵命令失败: {e}")
+        return None
+
+
+def get_pump_status(device_id: str) -> Optional[Dict]:
+    """获取水泵状态"""
+    try:
+        return ManageApiClient._instance._execute_request(
+            "GET",
+            f"/xiaozhi/pump/status/{device_id}"
+        )
+    except Exception as e:
+        print(f"获取水泵状态失败: {e}")
+        return None
+
+
+def get_pump_history(device_id: str, limit: int = 10) -> Optional[Dict]:
+    """获取水泵操作历史"""
+    try:
+        return ManageApiClient._instance._execute_request(
+            "GET",
+            f"/xiaozhi/pump/history/{device_id}?limit={limit}"
+        )
+    except Exception as e:
+        print(f"获取水泵历史失败: {e}")
+        return None
+
+
 def manage_api_http_safe_close():
     ManageApiClient.safe_close()

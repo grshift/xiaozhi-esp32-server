@@ -855,3 +855,32 @@ TTS:
     access_token: "U4YdYXVfpwWnk2t5Gp822zWPCuORyeJL"
     voice: "OUeAo1mhq6IBExi"
     output_dir: tmp/
+
+# 水泵相关配置
+pump:
+  # 水泵设备控制参数
+  max_flow_rate: 100.0          # 最大流量 L/min
+  max_duration: 3600            # 最大运行时间 seconds
+  default_flow_rate: 50.0       # 默认流量 L/min
+  command_timeout: 30           # 命令超时时间 seconds
+  status_update_interval: 1     # 状态更新间隔 seconds
+
+  # 安全限制
+  safety_limits:
+    max_continuous_run_time: 1800  # 最大连续运行时间 seconds (30分钟)
+    min_cool_down_time: 60         # 最短冷却时间 seconds
+    emergency_stop_timeout: 5      # 紧急停止超时 seconds
+
+  # 监控配置
+  monitoring:
+    enable_status_tracking: true   # 启用状态跟踪
+    enable_command_history: true   # 启用命令历史
+    max_history_records: 50        # 最大历史记录数
+    health_check_interval: 30      # 健康检查间隔 seconds
+
+  # API配置
+  api:
+    base_url: "/xiaozhi/pump"      # API基础路径
+    timeout: 30                    # API请求超时 seconds
+    retry_count: 3                 # 重试次数
+    retry_delay: 2                 # 重试延迟 seconds

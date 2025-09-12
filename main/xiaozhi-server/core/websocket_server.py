@@ -1,7 +1,9 @@
 import asyncio
+import json
 import websockets
 from config.logger import setup_logging
 from core.connection import ConnectionHandler
+from core.redis_subscriber import DeviceControlManager
 from config.config_loader import get_config_from_api
 from core.utils.modules_initialize import initialize_modules
 from core.utils.util import check_vad_update, check_asr_update
@@ -31,15 +33,22 @@ class WebSocketServer:
         self._memory = modules["memory"] if "memory" in modules else None
 
         self.active_connections = set()
+        self.device_control_manager = DeviceControlManager(self)
 
     async def start(self):
         server_config = self.config["server"]
         host = server_config.get("ip", "0.0.0.0")
         port = int(server_config.get("port", 8000))
 
+        # 初始化设备控制管理器
+        self.device_control_manager.initialize(self.config)
+
         async with websockets.serve(
             self._handle_connection, host, port, process_request=self._http_response
         ):
+            # 启动设备控制订阅器
+            await self.device_control_manager.start()
+
             await asyncio.Future()
 
     async def _handle_connection(self, websocket):
@@ -136,3 +145,33 @@ class WebSocketServer:
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"更新服务器配置失败: {str(e)}")
             return False
+
+    async def send_to_device(self, device_id: str, message: dict) -> bool:
+        """向指定设备发送消息"""
+        for connection in self.active_connections:
+            try:
+                # 假设ConnectionHandler有device_id属性或可以通过某种方式获取
+                if hasattr(connection, 'device_id') and connection.device_id == device_id:
+                    await connection.websocket.send(json.dumps(message))
+                    return True
+            except Exception as e:
+                self.logger.bind(tag=TAG).error(f"向设备 {device_id} 发送消息失败: {e}")
+                # 从活跃连接中移除失败的连接
+                self.active_connections.discard(connection)
+
+        return False
+
+    async def stop(self):
+        """停止服务器和相关服务"""
+        # 停止设备控制管理器
+        await self.device_control_manager.stop()
+
+        # 关闭所有WebSocket连接
+        for connection in self.active_connections.copy():
+            try:
+                await connection.websocket.close()
+            except Exception as e:
+                self.logger.bind(tag=TAG).error(f"关闭连接时出错: {e}")
+
+        self.active_connections.clear()
+        self.logger.bind(tag=TAG).info("WebSocket服务器已停止")

@@ -8,6 +8,7 @@ import ota from './module/ota.js'
 import timbre from "./module/timbre.js"
 import user from './module/user.js'
 import sensor from './module/sensor.js'
+import pump from './module/pump.js'
 
 /**
  * 接口地址
@@ -35,5 +36,6 @@ export default {
     timbre,
     ota,
     dict,
-    sensor
+    sensor,
+    pump
 }

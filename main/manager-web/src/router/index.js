@@ -158,6 +158,52 @@ const routes = [
       title: '传感器告警'
     }
   },
+  // 执行器相关路由
+  {
+    path: '/actuator-management',
+    name: 'ActuatorManagement',
+    component: function () {
+      return import('../views/ActuatorManagement.vue')
+    },
+    meta: {
+      requiresAuth: true,
+      title: '执行器管理'
+    }
+  },
+  {
+    path: '/actuator-monitor',
+    name: 'ActuatorMonitor',
+    component: function () {
+      return import('../views/ActuatorMonitor.vue')
+    },
+    meta: {
+      requiresAuth: true,
+      title: '执行器监控'
+    }
+  },
+  {
+    path: '/actuator-history',
+    name: 'ActuatorHistory',
+    component: function () {
+      return import('../views/ActuatorHistory.vue')
+    },
+    meta: {
+      requiresAuth: true,
+      title: '执行器历史'
+    }
+  },
+  // 水泵控制相关路由
+  {
+    path: '/pump-control',
+    name: 'PumpControl',
+    component: function () {
+      return import('../views/PumpControl.vue')
+    },
+    meta: {
+      requiresAuth: true,
+      title: '水泵控制'
+    }
+  },
 ]
 const router = new VueRouter({
   base: process.env.VUE_APP_PUBLIC_PATH || '/',
@@ -179,7 +225,7 @@ VueRouter.prototype.push = function push(location) {
 }
 
 // 需要登录才能访问的路由
-const protectedRoutes = ['home', 'RoleConfig', 'DeviceManagement', 'UserManagement', 'ModelConfig', 'SensorManagement', 'SensorMonitor', 'SensorAlerts']
+const protectedRoutes = ['home', 'RoleConfig', 'DeviceManagement', 'UserManagement', 'ModelConfig', 'SensorManagement', 'SensorMonitor', 'SensorAlerts', 'ActuatorManagement', 'ActuatorMonitor', 'ActuatorHistory', 'PumpControl']
 
 // 路由守卫
 router.beforeEach((to, from, next) => {

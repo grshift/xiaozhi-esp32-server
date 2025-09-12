@@ -82,5 +82,6 @@ export default new Vuex.Store({
     }
   },
   modules: {
+    pump: require('./modules/pump').default
   }
 })

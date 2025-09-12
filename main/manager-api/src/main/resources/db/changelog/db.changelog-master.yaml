@@ -289,3 +289,10 @@ databaseChangeLog:
         - sqlFile:
             encoding: utf8
             path: classpath:db/changelog/202501281030.sql
+  - changeSet:
+      id: 202509121200
+      author: actuator
+      changes:
+        - sqlFile:
+            encoding: utf8
+            path: classpath:db/changelog/202509121200.sql

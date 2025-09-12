@@ -25,6 +25,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.handle.sensorHandle import handle_sensor_data_message
+from mock.mock_logger import create_mock_logger_helper, setup_mock_logging
 
 
 @dataclass
@@ -69,6 +70,10 @@ class MockSensorDataGenerator:
         self._lock = threading.Lock()
         self._executor = ThreadPoolExecutor(max_workers=10)
         
+        # 设置日志系统
+        setup_mock_logging("INFO", "tmp/mock_logs", True)
+        self._logger = create_mock_logger_helper("GENERATOR")
+        
     def create_device(self, mac_address: Optional[str] = None, name: Optional[str] = None) -> MockDevice:
         """
         创建Mock设备
@@ -100,6 +105,10 @@ class MockSensorDataGenerator:
             self.devices[mac_address] = device
             self.sensor_history[mac_address] = {}
             
+            # 记录设备创建日志
+            device_logger = create_mock_logger_helper("DEVICE", mac_address)
+            device_logger.log_device_operation("创建", name, True, f"支持{len(self.SENSOR_CONFIGS)}种传感器")
+            
             print(f"✅ 已创建Mock设备: {name} ({mac_address})")
             return device
     
@@ -127,6 +136,10 @@ class MockSensorDataGenerator:
             del self.devices[mac_address]
             if mac_address in self.sensor_history:
                 del self.sensor_history[mac_address]
+            
+            # 记录设备删除日志
+            device_logger = create_mock_logger_helper("DEVICE", mac_address)
+            device_logger.log_device_operation("删除", device.name, True)
             
             print(f"✅ 已删除Mock设备: {device.name} ({mac_address})")
             return True
@@ -212,6 +225,10 @@ class MockSensorDataGenerator:
             # 生成新值
             value = self.generate_sensor_value(sensor_type, previous_value)
             
+            # 记录数据生成日志
+            data_logger = create_mock_logger_helper("DATA_GEN", mac_address)
+            data_logger.log_data_generation(sensor_type, value, True)
+            
             # 记录到历史
             if mac_address not in self.sensor_history:
                 self.sensor_history[mac_address] = {}
@@ -262,9 +279,14 @@ class MockSensorDataGenerator:
             # 使用现有的传感器数据处理函数
             is_success, message, processed_data = handle_sensor_data_message(message_data)
             
+            mac_address = message_data["mac_address"]
+            sensor_count = len(message_data["sensors"])
+            
+            # 记录数据发送日志
+            send_logger = create_mock_logger_helper("DATA_SEND", mac_address)
+            send_logger.log_data_sending(sensor_count, is_success, message)
+            
             if is_success:
-                mac_address = message_data["mac_address"]
-                sensor_count = len(message_data["sensors"])
                 print(f"✅ 成功发送设备 {mac_address} 的 {sensor_count} 个传感器数据到后端")
                 return True, message
             else:
@@ -367,6 +389,10 @@ class MockSensorDataGenerator:
         total_minutes = hours * 60
         data_points = total_minutes // interval_minutes
         
+        # 记录历史数据生成开始
+        history_logger = create_mock_logger_helper("HISTORY", mac_address)
+        history_logger.start_operation("GENERATE_HISTORY", f"{hours}小时, {data_points}个数据点")
+        
         print(f"🔄 开始为设备 {mac_address} 生成 {hours} 小时的历史数据...")
         print(f"   数据点数量: {data_points}, 间隔: {interval_minutes} 分钟")
         
@@ -398,6 +424,20 @@ class MockSensorDataGenerator:
                 results.append((False, error_msg))
         
         successful_count = sum(1 for success, _ in results if success)
+        
+        # 记录历史数据生成结束
+        history_logger.end_operation("GENERATE_HISTORY", successful_count > 0, 
+                                    f"成功: {successful_count}/{len(results)}")
+        
+        # 记录统计信息
+        history_logger.log_statistics({
+            "total_points": len(results),
+            "successful_points": successful_count,
+            "success_rate": f"{successful_count/len(results)*100:.1f}%" if results else "0%",
+            "hours": hours,
+            "interval_minutes": interval_minutes
+        })
+        
         print(f"✅ 历史数据生成完成: {successful_count}/{len(results)} 条成功")
         
         return results
@@ -439,6 +479,10 @@ class MockSensorDataGenerator:
         device.auto_generation_task = threading.Timer(interval_seconds, auto_generate)
         device.auto_generation_task.start()
         
+        # 记录自动生成启动日志
+        auto_logger = create_mock_logger_helper("AUTO_GEN", mac_address)
+        auto_logger.log_auto_generation_status("启动", interval_seconds, True)
+        
         print(f"🔄 已启动设备 {mac_address} 的自动数据生成，间隔: {interval_seconds} 秒")
         return True
     
@@ -460,6 +504,11 @@ class MockSensorDataGenerator:
         if device.auto_generation_task:
             device.auto_generation_task.cancel()
             device.auto_generation_task = None
+            
+            # 记录自动生成停止日志
+            auto_logger = create_mock_logger_helper("AUTO_GEN", mac_address)
+            auto_logger.log_auto_generation_status("停止", 0, True)
+            
             print(f"⏹️  已停止设备 {mac_address} 的自动数据生成")
             return True
         
