@@ -5,10 +5,12 @@ import java.util.List;
 
 import xiaozhi.common.page.PageData;
 import xiaozhi.common.service.BaseService;
+import xiaozhi.common.utils.Result;
 import xiaozhi.modules.device.dto.DevicePageUserDTO;
 import xiaozhi.modules.device.dto.DeviceReportReqDTO;
 import xiaozhi.modules.device.dto.DeviceReportRespDTO;
 import xiaozhi.modules.device.dto.DeviceManualAddDTO;
+import xiaozhi.modules.device.dto.DeviceSelectDTO;
 import xiaozhi.modules.device.entity.DeviceEntity;
 import xiaozhi.modules.device.vo.UserShowDeviceListVO;
 
@@ -102,5 +104,12 @@ public interface DeviceService extends BaseService<DeviceEntity> {
      * 更新设备连接信息
      */
     void updateDeviceConnectionInfo(String agentId, String deviceId, String appVersion);
+
+    /**
+     * 获取配置了水泵的设备列表(用于下拉框)
+     * @param userId 用户ID
+     * @return 设备选择列表
+     */
+    Result<List<DeviceSelectDTO>> getDevicesForPumpManagement(Long userId);
 
 }

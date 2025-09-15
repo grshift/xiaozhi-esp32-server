@@ -36,6 +36,7 @@ import xiaozhi.modules.device.dao.DeviceDao;
 import xiaozhi.modules.device.dto.DevicePageUserDTO;
 import xiaozhi.modules.device.dto.DeviceReportReqDTO;
 import xiaozhi.modules.device.dto.DeviceReportRespDTO;
+import xiaozhi.modules.device.dto.DeviceSelectDTO;
 import xiaozhi.modules.device.entity.DeviceEntity;
 import xiaozhi.modules.device.entity.OtaEntity;
 import xiaozhi.modules.device.service.DeviceService;
@@ -45,6 +46,12 @@ import xiaozhi.modules.security.user.SecurityUser;
 import xiaozhi.modules.sys.service.SysParamsService;
 import xiaozhi.modules.sys.service.SysUserUtilService;
 import xiaozhi.modules.device.dto.DeviceManualAddDTO;
+import xiaozhi.modules.actuator.dao.DeviceActuatorDao;
+import xiaozhi.modules.actuator.entity.DeviceActuatorEntity;
+import xiaozhi.common.utils.ResultUtils;
+
+import java.util.Collections;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -56,6 +63,7 @@ public class DeviceServiceImpl extends BaseServiceImpl<DeviceDao, DeviceEntity> 
     private final SysParamsService sysParamsService;
     private final RedisUtils redisUtils;
     private final OtaService otaService;
+    private final DeviceActuatorDao deviceActuatorDao;
 
     @Async
     public void updateDeviceConnectionInfo(String agentId, String deviceId, String appVersion) {
@@ -443,5 +451,34 @@ public class DeviceServiceImpl extends BaseServiceImpl<DeviceDao, DeviceEntity> 
         entity.setUpdater(userId);
         entity.setAutoUpdate(1);
         baseDao.insert(entity);
+    }
+
+    @Override
+    public xiaozhi.common.utils.Result<List<DeviceSelectDTO>> getDevicesForPumpManagement(Long userId) {
+        List<String> deviceIdsWithActuators = deviceActuatorDao.selectObjs(
+            new QueryWrapper<DeviceActuatorEntity>().select("DISTINCT device_id")
+        ).stream().map(Object::toString).collect(Collectors.toList());
+
+        if (deviceIdsWithActuators.isEmpty()) {
+            return ResultUtils.success(Collections.emptyList());
+        }
+
+        List<DeviceEntity> devices = deviceDao.selectList(
+            new QueryWrapper<DeviceEntity>().in("id", deviceIdsWithActuators)
+                .eq("user_id", userId) // 进行权限过滤
+        );
+
+        List<DeviceSelectDTO> dtoList = devices.stream().map(device -> {
+            DeviceSelectDTO dto = new DeviceSelectDTO();
+            dto.setId(device.getId());
+            dto.setName(device.getAlias() != null ? device.getAlias() : device.getMacAddress());
+            // 根据最后连接时间判断是否在线（5分钟内认为在线）
+            boolean isOnline = device.getLastConnectedAt() != null && 
+                (System.currentTimeMillis() - device.getLastConnectedAt().getTime()) < 5 * 60 * 1000;
+            dto.setIsOnline(isOnline);
+            return dto;
+        }).collect(Collectors.toList());
+
+        return ResultUtils.success(dtoList);
     }
 }

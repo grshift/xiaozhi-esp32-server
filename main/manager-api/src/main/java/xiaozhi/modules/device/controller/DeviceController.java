@@ -26,6 +26,7 @@ import xiaozhi.modules.device.dto.DeviceRegisterDTO;
 import xiaozhi.modules.device.dto.DeviceUnBindDTO;
 import xiaozhi.modules.device.dto.DeviceUpdateDTO;
 import xiaozhi.modules.device.dto.DeviceManualAddDTO;
+import xiaozhi.modules.device.dto.DeviceSelectDTO;
 import xiaozhi.modules.device.entity.DeviceEntity;
 import xiaozhi.modules.device.service.DeviceService;
 import xiaozhi.modules.security.user.SecurityUser;
@@ -117,5 +118,13 @@ public class DeviceController {
         UserDetail user = SecurityUser.getUser();
         deviceService.manualAddDevice(user.getId(), dto);
         return new Result<>();
+    }
+
+    @GetMapping("/list-for-pump")
+    @Operation(summary = "获取配置了水泵的设备列表(用于下拉框)")
+    @RequiresPermissions("sys:role:normal")
+    public Result<List<DeviceSelectDTO>> getDevicesForPumpManagement() {
+        UserDetail user = SecurityUser.getUser();
+        return deviceService.getDevicesForPumpManagement(user.getId());
     }
 }
