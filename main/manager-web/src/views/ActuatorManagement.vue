@@ -22,15 +22,25 @@
               clearable
               style="width: 300px;"
               :loading="deviceLoading"
+              :disabled="deviceList.length === 0"
             >
               <el-option
                 v-for="device in deviceList"
                 :key="device.id"
-                :label="device.name || device.macAddress"
+                :label="device.alias || device.macAddress"
                 :value="device.id"
               >
               </el-option>
             </el-select>
+            <div v-if="deviceList.length === 0 && !deviceLoading" class="empty-tip">
+              <el-alert
+                title="暂无设备"
+                description="您还没有绑定任何设备，请先激活设备后再管理水泵"
+                type="info"
+                :closable="false"
+                show-icon>
+              </el-alert>
+            </div>
           </el-card>
 
           <el-divider></el-divider>
@@ -97,22 +107,24 @@
 
                   <el-table-column label="操作" width="180" fixed="right">
                     <template slot-scope="scope">
-                      <el-button
-                        size="mini"
-                        type="primary"
-                        @click="showEditDialog(scope.row)"
-                        icon="el-icon-edit"
-                      >
-                        编辑
-                      </el-button>
-                      <el-button
-                        size="mini"
-                        type="danger"
-                        @click="handleDelete(scope.row)"
-                        icon="el-icon-delete"
-                      >
-                        删除
-                      </el-button>
+                      <div class="action-buttons">
+                        <el-button
+                          size="mini"
+                          type="primary"
+                          @click="showEditDialog(scope.row)"
+                          icon="el-icon-edit"
+                        >
+                          编辑
+                        </el-button>
+                        <el-button
+                          size="mini"
+                          type="danger"
+                          @click="handleDelete(scope.row)"
+                          icon="el-icon-delete"
+                        >
+                          删除
+                        </el-button>
+                      </div>
                     </template>
                   </el-table-column>
                 </el-table>
@@ -172,6 +184,7 @@
             :rows="4"
             placeholder='请输入JSON格式的配置信息，如：{"maxFlowRate": 100, "minFlowRate": 0}'
           ></el-input>
+          <div class="form-tip">留空将使用默认配置 {}</div>
         </el-form-item>
 
         <el-form-item label="校准数据">
@@ -181,6 +194,7 @@
             :rows="3"
             placeholder='请输入校准数据，如：{"calibrationFactor": 1.0}'
           ></el-input>
+          <div class="form-tip">留空将不设置校准数据</div>
         </el-form-item>
 
         <el-form-item label="启用状态">
@@ -247,15 +261,24 @@ export default {
     async getDeviceList() {
       this.deviceLoading = true;
       try {
-        // 这里应该调用实际的设备列表API
-        this.deviceList = [
-          { id: 'esp32-device-001', name: '1号农业大棚', macAddress: 'AA:BB:CC:DD:EE:01' },
-          { id: 'esp32-device-002', name: '2号水产养殖场', macAddress: 'AA:BB:CC:DD:EE:02' },
-          { id: 'esp32-device-003', name: '3号温室大棚', macAddress: 'AA:BB:CC:DD:EE:03' }
-        ];
+        await new Promise((resolve) => {
+          Api.device.getDeviceList(({ data }) => {
+            if (data.code === 0) {
+              this.deviceList = data.data || [];
+              if (this.deviceList.length === 0) {
+                this.$message.info('您还没有绑定任何设备，请先激活设备');
+              }
+            } else {
+              this.$message.error(data.msg || '获取设备列表失败');
+              this.deviceList = [];
+            }
+            resolve();
+          });
+        });
       } catch (error) {
         console.error('获取设备列表失败:', error);
         this.$message.error('获取设备列表失败');
+        this.deviceList = [];
       } finally {
         this.deviceLoading = false;
       }
@@ -322,14 +345,55 @@ export default {
       this.$refs.pumpForm.validate(async (valid) => {
         if (!valid) return;
 
+        // 验证JSON格式
+        if (this.pumpForm.configJson && !this.isValidJson(this.pumpForm.configJson)) {
+          this.$message.error('配置参数必须是有效的JSON格式');
+          return;
+        }
+        if (this.pumpForm.calibrationData && !this.isValidJson(this.pumpForm.calibrationData)) {
+          this.$message.error('校准数据必须是有效的JSON格式');
+          return;
+        }
+
         this.submitLoading = true;
         try {
-          // 注意：后端没有提供水泵的CRUD接口，这里只是示例
-          // 实际使用时需要后端提供相应的接口
-          this.$message.info('水泵配置功能需要后端提供相应的API接口');
-          this.dialogVisible = false;
+          const formData = {
+            ...this.pumpForm,
+            deviceId: this.selectedDeviceId
+          };
+
+          if (this.isEdit) {
+            // 更新水泵配置
+            await new Promise((resolve) => {
+              Api.pump.updatePumpConfig(formData, ({ data }) => {
+                if (data.code === 0) {
+                  this.$message.success('水泵配置更新成功');
+                  this.dialogVisible = false;
+                  this.refreshPumps();
+                } else {
+                  this.$message.error(data.msg || '更新水泵配置失败');
+                }
+                resolve();
+              });
+            });
+          } else {
+            // 添加水泵配置
+            await new Promise((resolve) => {
+              Api.pump.addPumpConfig(formData, ({ data }) => {
+                if (data.code === 0) {
+                  this.$message.success('水泵配置添加成功');
+                  this.dialogVisible = false;
+                  this.refreshPumps();
+                } else {
+                  this.$message.error(data.msg || '添加水泵配置失败');
+                }
+                resolve();
+              });
+            });
+          }
         } catch (error) {
           console.error('提交失败:', error);
+          this.$message.error('操作失败');
         } finally {
           this.submitLoading = false;
         }
@@ -344,18 +408,50 @@ export default {
           type: 'warning'
         });
 
-        // 注意：后端没有提供删除接口，这里只是示例
-        this.$message.info('水泵删除功能需要后端提供相应的API接口');
-      } catch {
-        // 用户取消删除
+        // 调用删除API
+        await new Promise((resolve) => {
+          Api.pump.deletePumpConfig(pump.id, ({ data }) => {
+            if (data.code === 0) {
+              this.$message.success('水泵删除成功');
+              this.refreshPumps();
+            } else {
+              this.$message.error(data.msg || '删除水泵失败');
+            }
+            resolve();
+          });
+        });
+      } catch (error) {
+        if (error !== 'cancel') {
+          console.error('删除失败:', error);
+          this.$message.error('删除失败');
+        }
       }
     },
 
     async handleEnableChange(pump) {
-      // 注意：后端没有提供更新接口，这里只是示例
-      this.$message.info('水泵状态更新功能需要后端提供相应的API接口');
-      // 恢复原值
-      pump.isEnabled = pump.isEnabled === 1 ? 0 : 1;
+      try {
+        const newStatus = pump.isEnabled === 1 ? 0 : 1;
+        
+        await new Promise((resolve) => {
+          Api.pump.updatePumpStatus(pump.id, newStatus, ({ data }) => {
+            if (data.code === 0) {
+              this.$message.success('水泵状态更新成功');
+              // 刷新列表以获取最新状态
+              this.refreshPumps();
+            } else {
+              this.$message.error(data.msg || '更新水泵状态失败');
+              // 恢复原值
+              pump.isEnabled = pump.isEnabled === 1 ? 0 : 1;
+            }
+            resolve();
+          });
+        });
+      } catch (error) {
+        console.error('更新状态失败:', error);
+        this.$message.error('更新状态失败');
+        // 恢复原值
+        pump.isEnabled = pump.isEnabled === 1 ? 0 : 1;
+      }
     },
 
     getStatusType(status) {
@@ -387,6 +483,16 @@ export default {
 
     headerCellClassName() {
       return 'custom-header';
+    },
+
+    isValidJson(str) {
+      if (!str || str.trim() === '') return true; // 空字符串认为是有效的
+      try {
+        JSON.parse(str);
+        return true;
+      } catch (e) {
+        return false;
+      }
     }
   },
 
@@ -472,5 +578,30 @@ export default {
 
 .dialog-footer {
   text-align: right;
+}
+
+.empty-tip {
+  margin-top: 10px;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 5px;
+  line-height: 1.4;
+}
+
+.action-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+}
+
+.action-buttons .el-button {
+  width: 70px;
+  margin: 0;
 }
 </style>

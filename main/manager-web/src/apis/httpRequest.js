@@ -109,6 +109,11 @@ function httpHandlerError(info, failCallback, networkFailCallback) {
     /** 请求成功，退出该函数 可以根据项目需求来判断是否请求成功。这里判断的是status为200的时候是成功 */
     let networkError = false
     if (info.status === 200) {
+        // 检查是否为blob响应（文件下载）
+        if (info.data instanceof Blob) {
+            return networkError // blob响应直接返回成功
+        }
+        
         if (info.data.code === 'success' || info.data.code === 0 || info.data.code === undefined) {
             return networkError
         } else if (info.data.code === 401) {

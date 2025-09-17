@@ -28,15 +28,25 @@
               clearable
               style="width: 300px;"
               :loading="deviceLoading"
+              :disabled="deviceList.length === 0"
             >
               <el-option
                 v-for="device in deviceList"
                 :key="device.id"
-                :label="device.name || device.macAddress"
+                :label="device.alias || device.macAddress"
                 :value="device.id"
               >
               </el-option>
             </el-select>
+            <div v-if="deviceList.length === 0 && !deviceLoading" class="empty-tip">
+              <el-alert
+                title="暂无设备"
+                description="您还没有绑定任何设备，请先激活设备后再监控水泵"
+                type="info"
+                :closable="false"
+                show-icon>
+              </el-alert>
+            </div>
           </el-card>
 
           <el-divider></el-divider>
@@ -208,15 +218,24 @@ export default {
     async getDeviceList() {
       this.deviceLoading = true;
       try {
-        // 这里应该调用实际的设备列表API
-        this.deviceList = [
-          { id: 'esp32-device-001', name: '1号农业大棚', macAddress: 'AA:BB:CC:DD:EE:01' },
-          { id: 'esp32-device-002', name: '2号水产养殖场', macAddress: 'AA:BB:CC:DD:EE:02' },
-          { id: 'esp32-device-003', name: '3号温室大棚', macAddress: 'AA:BB:CC:DD:EE:03' }
-        ];
+        await new Promise((resolve) => {
+          Api.device.getDeviceList(({ data }) => {
+            if (data.code === 0) {
+              this.deviceList = data.data || [];
+              if (this.deviceList.length === 0) {
+                this.$message.info('您还没有绑定任何设备，请先激活设备');
+              }
+            } else {
+              this.$message.error(data.msg || '获取设备列表失败');
+              this.deviceList = [];
+            }
+            resolve();
+          });
+        });
       } catch (error) {
         console.error('获取设备列表失败:', error);
         this.$message.error('获取设备列表失败');
+        this.deviceList = [];
       } finally {
         this.deviceLoading = false;
       }
@@ -550,5 +569,9 @@ export default {
   line-height: 1.5;
   overflow-x: auto;
   margin: 0;
+}
+
+.empty-tip {
+  margin-top: 10px;
 }
 </style>

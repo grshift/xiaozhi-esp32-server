@@ -1,7 +1,5 @@
 package xiaozhi.modules.actuator.service.impl;
 
-import cn.hutool.core.text.csv.CsvUtil;
-import cn.hutool.core.text.csv.CsvWriter;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -231,23 +229,50 @@ public class ActuatorControlServiceImpl implements ActuatorControlService {
     }
 
     @Override
-    public byte[] exportHistory(PumpHistoryQueryDTO queryDTO) {
-        QueryWrapper<ActuatorDataEntity> wrapper = buildHistoryQueryWrapper(queryDTO);
-        List<ActuatorDataEntity> list = actuatorDataService.list(wrapper);
+public byte[] exportHistory(PumpHistoryQueryDTO queryDTO) {
+    QueryWrapper<ActuatorDataEntity> wrapper = buildHistoryQueryWrapper(queryDTO);
+    List<ActuatorDataEntity> list = actuatorDataService.list(wrapper);
 
-        StringWriter stringWriter = new StringWriter();
-        CsvWriter writer = CsvUtil.getWriter(stringWriter);
-        writer.write(new String[]{"记录ID", "设备ID", "水泵编码", "命令", "命令参数", "执行时间"});
-        
+    // 1. 使用StringBuilder手动构建CSV内容
+    StringBuilder csvContent = new StringBuilder();
+    
+    // 写入表头
+    csvContent.append("记录ID,设备ID,水泵编码,命令,命令参数,执行时间\n"); //
+    
+    if (!list.isEmpty()) {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         for (ActuatorDataEntity entity : list) {
-            writer.write(new String[]{
-                entity.getId(), entity.getDeviceId(), entity.getActuatorCode(),
-                entity.getCommand(), entity.getCommandParams(), sdf.format(entity.getExecutedAt())
-            });
+            csvContent.append(escapeCsvField(entity.getId())).append(",");
+            csvContent.append(escapeCsvField(entity.getDeviceId())).append(",");
+            csvContent.append(escapeCsvField(entity.getActuatorCode())).append(",");
+            csvContent.append(escapeCsvField(entity.getCommand())).append(",");
+            csvContent.append(escapeCsvField(entity.getCommandParams())).append(",");
+            csvContent.append(escapeCsvField(sdf.format(entity.getExecutedAt()))).append("\n");
         }
-        return stringWriter.toString().getBytes(StandardCharsets.UTF_8);
+    } else {
+        // 当没有数据时，写入提示信息
+        csvContent.append("无数据,无数据,无数据,无数据,无数据,无数据\n"); //
     }
+    
+    // 2. 在CSV内容前添加UTF-8 BOM
+    String contentWithBom = "\uFEFF" + csvContent.toString();
+    
+    // 3. 明确使用UTF-8编码将字符串转换为字节数组
+    return contentWithBom.getBytes(StandardCharsets.UTF_8);
+}
+
+/**
+ * 转义CSV字段，处理包含逗号、引号或换行符的字段
+ */
+private String escapeCsvField(String field) {
+    if (field == null) {
+        return "";
+    }
+    if (field.contains(",") || field.contains("\"") || field.contains("\n")) {
+        return "\"" + field.replace("\"", "\"\"") + "\"";
+    }
+    return field;
+}
     
     private QueryWrapper<ActuatorDataEntity> buildHistoryQueryWrapper(PumpHistoryQueryDTO dto) {
         QueryWrapper<ActuatorDataEntity> wrapper = new QueryWrapper<>();
